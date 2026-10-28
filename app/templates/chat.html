@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>earagmvp | Chat</title>
+    <style>
+      body {
+        font: 16px system-ui;
+        background: #f7f8fa;
+        color: #17202a;
+        margin: 0;
+      }
+      nav {
+        background: #fff;
+        border-bottom: 1px solid #e5e7eb;
+        padding: 18px max(20px, calc((100% - 850px) / 2));
+        display: flex;
+        gap: 24px;
+      }
+      a {
+        color: #2363c5;
+      }
+      main {
+        max-width: 850px;
+        margin: 45px auto;
+        padding: 0 20px;
+      }
+      .messages {
+        min-height: 360px;
+        max-height: 65vh;
+        overflow: auto;
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 20px;
+      }
+      .bubble {
+        white-space: pre-wrap;
+        margin: 12px 0;
+        padding: 12px;
+        border-radius: 9px;
+        background: #f1f5f9;
+      }
+      .bubble.user {
+        background: #e4edff;
+        margin-left: 15%;
+      }
+      .sources {
+        font-size: 14px;
+        line-height: 1.9;
+        padding: 0 12px 12px;
+      }
+      form {
+        display: flex;
+        gap: 10px;
+        margin-top: 16px;
+      }
+      input {
+        flex: 1;
+        min-width: 0;
+        padding: 13px;
+        border: 1px solid #cbd5e1;
+        border-radius: 7px;
+        font: inherit;
+      }
+      button {
+        padding: 12px 20px;
+        border: 0;
+        border-radius: 7px;
+        background: #235bd6;
+        color: #fff;
+        cursor: pointer;
+      }
+      button:disabled {
+        opacity: 0.5;
+      }
+    </style>
+  </head>
+  <body>
+    <nav>
+      <strong>earagmvp</strong><a href="/earagmvpdocuments">Documents</a
+      ><a href="/earagmvpchat">Chat</a>
+    </nav>
+    <main>
+      <h1>EARAGMVP chat box</h1>
+      <p>
+        Initially, stored documents topic's about improving finger strength and
+        power.
+      </p>
+      <div id="messages" class="messages">
+        <div class="bubble">Try: “What does the document say about …?”</div>
+      </div>
+      <form id="chat-form">
+        <input
+          id="question"
+          maxlength="1500"
+          placeholder="Ask a question about your PDFs"
+          required
+          autofocus
+        /><button id="send">Ask</button>
+      </form>
+    </main>
+    <script>
+const API_BASE = location.pathname.startsWith('/earagmvp')
+    ? '/earagmvpapi'
+    : '/api';
+
+      const messages = document.getElementById("messages");
+      const input = document.getElementById("question");
+      const send = document.getElementById("send");
+      function bubble(text, role = "assistant") {
+        const div = document.createElement("div");
+        div.className = `bubble ${role}`;
+        div.textContent = text;
+        messages.append(div);
+        messages.scrollTop = messages.scrollHeight;
+        return div;
+      }
+      document
+        .getElementById("chat-form")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const question = input.value.trim();
+          if (!question) return;
+          bubble(question, "user");
+          input.value = "";
+          const pending = bubble("Searching documents…");
+          send.disabled = true;
+          try {
+            const r = await fetch(`${API_BASE}/chat`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ question }),
+            });
+            const data = await r.json();
+            if (!r.ok)
+              throw Error(
+                typeof data.detail === "string"
+                  ? data.detail
+                  : "Chat request failed",
+              );
+            pending.textContent = data.answer;
+            if (data.sources?.length) {
+              const group = document.createElement("div");
+              group.className = "sources";
+              const heading = document.createElement("strong");
+              heading.textContent = "Retrieved passages: ";
+              group.append(heading);
+              for (const s of data.sources) {
+                const a = document.createElement("a");
+                a.href = `${API_BASE}/documents/${s.document_id}/file#page=${s.page}`;
+                a.target = "_blank";
+                a.rel = "noopener";
+                a.textContent = `[${s.reference}] ${s.filename}, p. ${s.page}`;
+                group.append(a, document.createElement("br"));
+              }
+              pending.after(group);
+            }
+          } catch (error) {
+            pending.textContent = `Error: ${error.message}`;
+          } finally {
+            send.disabled = false;
+            input.focus();
+            messages.scrollTop = messages.scrollHeight;
+          }
+        });
+    </script>
+  </body>
+</html>

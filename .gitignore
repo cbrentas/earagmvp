@@ -1,0 +1,26 @@
+# Environment and credentials
+.env
+.env.*
+!.env.example
+.venv/
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Runtime files
+logs/
+data/uploads/
+
+# Local testing and backups
+testscripts/
+app/templates/*_local.html
+*.bak
+*.zip
+
+# OS/editor files
+.DS_Store
+.vscode/
+
+.later.README.md

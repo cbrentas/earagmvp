@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>earagmvp | Documents</title>
+  <style>
+    body{font:16px system-ui;background:#f7f8fa;color:#17202a;margin:0}nav{background:#fff;border-bottom:1px solid #e5e7eb;padding:18px max(20px,calc((100% - 850px)/2));display:flex;gap:24px}a{color:#2363c5}main{max-width:850px;margin:45px auto;padding:0 20px}section{padding:24px;background:#fff;border:1px solid #e5e7eb;border-radius:12px;margin-bottom:20px}button{padding:12px 20px;border:0;border-radius:7px;background:#235bd6;color:#fff;cursor:pointer}input{max-width:100%;margin-right:12px}li{margin:12px 0}#status{white-space:pre-wrap}
+  </style>
+</head>
+<body>
+  <nav><strong>earagmvp</strong><a href="/earagmvpdocuments">Documents</a><a href="/earagmvpchat">Chat</a></nav>
+  <main><h1>Knowledge base</h1><p>Upload a text-based PDF. The application extracts text, chunks it, and stores embeddings for retrieval.</p>
+  <section><h2>Upload PDF</h2><form id="upload"><input id="file" type="file" accept="application/pdf,.pdf" required><button id="upload-button">Index PDF</button></form><p id="status" aria-live="polite"></p></section>
+  <section><h2>Indexed documents</h2><ul id="documents"></ul></section></main>
+  <script>
+const API_BASE = location.pathname.startsWith('/earagmvp')
+    ? '/earagmvpapi'
+    : '/api';
+
+    async function refresh(){
+      const r=await fetch(`${API_BASE}/documents`); const docs=await r.json(); const ul=document.getElementById('documents');ul.replaceChildren();
+      if(!docs.length){const li=document.createElement('li');li.textContent='No documents yet.';ul.append(li);return;}
+      for(const d of docs){const li=document.createElement('li');const a=document.createElement('a');a.href=`${API_BASE}/documents/${d.id}/file`;a.target='_blank';a.rel='noopener';a.textContent=d.filename;li.append(a,document.createTextNode(` — ${d.pages} pages, ${d.chunks} chunks`));ul.append(li);}
+    }
+    document.getElementById('upload').addEventListener('submit',async e=>{
+      e.preventDefault();const status=document.getElementById('status');const button=document.getElementById('upload-button');status.textContent='Processing PDF and embedding chunks. This may take a little while.';button.disabled=true;
+      try{const data=new FormData();data.append('file',document.getElementById('file').files[0]);const r=await fetch(`${API_BASE}/documents`,{method:'POST',body:data});const json=await r.json();if(!r.ok)throw Error(typeof json.detail==='string'?json.detail:'Upload failed');status.textContent=json.created?`Indexed ${json.filename} successfully.`:`Already indexed: ${json.filename}.`;await refresh();}
+      catch(error){status.textContent=`Error: ${error.message}`;}finally{button.disabled=false;}
+    });
+    refresh().catch(()=>{document.getElementById('status').textContent='Cannot load document list.'});
+  </script>
+</body></html>
